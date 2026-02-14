@@ -2452,15 +2452,21 @@ class OpenGexExporter(bpy.types.Operator, ExportHelper):
 
 			# Export a separate attenuation function for each type that's in use.
 
-			falloff = object.falloff_type
+			# Blender 5.0 removed some legacy attenuation properties.
+			# Preserve 4.x behavior with safe defaults.
+			falloff = getattr(object, "falloff_type", "INVERSE_SQUARE")
+			distance = getattr(object, "distance", 1.0)
+			linear_atten = getattr(object, "linear_attenuation", 0.0)
+			quadratic_atten = getattr(object, "quadratic_attenuation", 1.0)
 
 			if (falloff == "INVERSE_LINEAR"):
 				self.IndentWrite(B"Atten (curve = \"inverse\")\n", 0, True)
 				self.IndentWrite(B"{\n")
 
 				self.IndentWrite(B"Param (attrib = \"scale\") {float {", 1)
-				self.WriteFloat(object.distance)
+				self.WriteFloat(distance)
 				self.Write(B"}}\n")
+
 
 				self.IndentWrite(B"}\n")
 
@@ -2469,50 +2475,54 @@ class OpenGexExporter(bpy.types.Operator, ExportHelper):
 				self.IndentWrite(B"{\n")
 
 				self.IndentWrite(B"Param (attrib = \"scale\") {float {", 1)
-				self.WriteFloat(math.sqrt(object.distance))
+				self.WriteFloat(math.sqrt(distance))
 				self.Write(B"}}\n")
+
 
 				self.IndentWrite(B"}\n")
 
 			elif (falloff == "LINEAR_QUADRATIC_WEIGHTED"):
-				if (object.linear_attenuation != 0.0):
+				if (linear_atten != 0.0):
 					self.IndentWrite(B"Atten (curve = \"inverse\")\n", 0, True)
 					self.IndentWrite(B"{\n")
 
 					self.IndentWrite(B"Param (attrib = \"scale\") {float {", 1)
-					self.WriteFloat(object.distance)
+					self.WriteFloat(distance)
 					self.Write(B"}}\n")
+
 
 					self.IndentWrite(B"Param (attrib = \"constant\") {float {", 1)
 					self.WriteFloat(1.0)
 					self.Write(B"}}\n")
 
 					self.IndentWrite(B"Param (attrib = \"linear\") {float {", 1)
-					self.WriteFloat(object.linear_attenuation)
+					self.WriteFloat(linear_atten)
 					self.Write(B"}}\n")
+
 
 					self.IndentWrite(B"}\n\n")
 
-				if (object.quadratic_attenuation != 0.0):
+				if (quadratic_atten != 0.0):
 					self.IndentWrite(B"Atten (curve = \"inverse_square\")\n")
 					self.IndentWrite(B"{\n")
 
 					self.IndentWrite(B"Param (attrib = \"scale\") {float {", 1)
-					self.WriteFloat(object.distance)
+					self.WriteFloat(distance)
 					self.Write(B"}}\n")
+
 
 					self.IndentWrite(B"Param (attrib = \"constant\") {float {", 1)
 					self.WriteFloat(1.0)
 					self.Write(B"}}\n")
 
 					self.IndentWrite(B"Param (attrib = \"quadratic\") {float {", 1)
-					self.WriteFloat(object.quadratic_attenuation)
+					self.WriteFloat(quadratic_atten)
 					self.Write(B"}}\n")
+
 
 					self.IndentWrite(B"}\n")
 
 			if (spotFlag):
-
 				# Export additional angular attenuation for spot lights.
 
 				self.IndentWrite(B"Atten (kind = \"angle\", curve = \"linear\")\n", 0, True)
