@@ -2265,14 +2265,13 @@ class OpenGexExporter(bpy.types.Operator, ExportHelper):
 
 		# Write morph targets.
 		if (shapeKeys):
-			shapeKeys.key_blocks[0].value = 0.0
 			for m in range(1, len(currentMorphValue)):
-				shapeKeys.key_blocks[m].value = 1.0
-				mesh.update()
+				morphMesh = exportMesh.copy()
+				shapeKeyData = shapeKeys.key_blocks[m].data
+				for i in range(len(morphMesh.vertices)):
+					morphMesh.vertices[i].co = shapeKeyData[i].co
 
-				node.active_shape_key_index = m
-				#morphMesh = node.to_mesh(scene, applyModifiers, "RENDER", True, False)
-				morphMesh = self.GetMesh( node, scene, applyModifiers )
+				morphMesh.update()
 				morphMesh.calc_loop_triangles()
 
 				# Write the morph target position array.
@@ -2310,7 +2309,7 @@ class OpenGexExporter(bpy.types.Operator, ExportHelper):
 				self.IndentWrite(B"}\n")
 
 				# Delete morphMesh
-				node.to_mesh_clear()
+				bpy.data.meshes.remove(morphMesh)
 
 		# Write the index arrays.
 
@@ -2321,7 +2320,7 @@ class OpenGexExporter(bpy.types.Operator, ExportHelper):
 				maxMaterialIndex = index
 
 		if (maxMaterialIndex == 0):
-			
+
 			# There is only one material, so write a single index array.
 
 			self.IndentWrite(B"IndexArray\n", 0, True)
