@@ -853,6 +853,32 @@ class OpenGexExporter(bpy.types.Operator, ExportHelper):
 
 
 	@staticmethod
+	def GetActionFCurves(action, animationData):
+		if (not action):
+			return ([])
+
+		# Blender 4.5 and older expose a legacy proxy collection.
+		fcurveCollection = getattr(action, "fcurves", None)
+		if (fcurveCollection is not None):
+			return (fcurveCollection)
+
+		# Blender 5.0 removed action.fcurves. Read curves through the action slot channelbag(s).
+		actionSlot = getattr(animationData, "action_slot", None)
+		if (not actionSlot):
+			return ([])
+
+		curveArray = []
+		for layer in action.layers:
+			for strip in layer.strips:
+				channelbag = strip.channelbag(actionSlot)
+				if (channelbag):
+					for fcurve in channelbag.fcurves:
+						curveArray.append(fcurve)
+
+		return (curveArray)
+
+
+	@staticmethod
 	def CollectBoneAnimation(armature, name):
 		path = "pose.bones[\"" + name + "\"]."
 		curveArray = []
@@ -860,7 +886,7 @@ class OpenGexExporter(bpy.types.Operator, ExportHelper):
 		if (armature.animation_data):
 			action = armature.animation_data.action
 			if (action):
-				for fcurve in action.fcurves:
+				for fcurve in OpenGexExporter.GetActionFCurves(action, armature.animation_data):
 					if (fcurve.data_path.startswith(path)):
 						curveArray.append(fcurve)
 
@@ -1242,7 +1268,7 @@ class OpenGexExporter(bpy.types.Operator, ExportHelper):
 		if ((not sampledAnimation) and (node.animation_data)):
 			action = node.animation_data.action
 			if (action):
-				for fcurve in action.fcurves:
+				for fcurve in OpenGexExporter.GetActionFCurves(action, node.animation_data):
 					kind = OpenGexExporter.ClassifyAnimationCurve(fcurve)
 					if (kind != kAnimationSampled):
 						if (fcurve.data_path == "location"):
@@ -1696,7 +1722,7 @@ class OpenGexExporter(bpy.types.Operator, ExportHelper):
 		if (shapeKeys.animation_data):
 			action = shapeKeys.animation_data.action
 			if (action):
-				for fcurve in action.fcurves:
+				for fcurve in OpenGexExporter.GetActionFCurves(action, shapeKeys.animation_data):
 					if ((fcurve.data_path.startswith("key_blocks[")) and (fcurve.data_path.endswith("].value"))):
 						keyName = fcurve.data_path.strip("abcdehklopstuvy[]_.")
 						if ((keyName[0] == "\"") or (keyName[0] == "'")):
@@ -1711,7 +1737,7 @@ class OpenGexExporter(bpy.types.Operator, ExportHelper):
 		if ((not action) and (node.animation_data)):
 			action = node.animation_data.action
 			if (action):
-				for fcurve in action.fcurves:
+				for fcurve in OpenGexExporter.GetActionFCurves(action, node.animation_data):
 					if ((fcurve.data_path.startswith("data.shape_keys.key_blocks[")) and (fcurve.data_path.endswith("].value"))):
 						keyName = fcurve.data_path.strip("abcdehklopstuvy[]_.")
 						if ((keyName[0] == "\"") or (keyName[0] == "'")):
